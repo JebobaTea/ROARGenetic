@@ -37,7 +37,7 @@ class GeneralizedFeedforwardModel:
         topology_str_flattened = ""
         for k in self.topology:
             topology_str_flattened += str(k)
-        return self._identifier + "_" + topology_str_flattened
+        return self._lineage + "_" + topology_str_flattened
 
     async def debug_structure(self):
         print()
