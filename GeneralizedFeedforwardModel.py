@@ -17,29 +17,29 @@ class GeneralizedFeedforwardModel:
         # what's an fstring
         self._lineage = parent_string + ">>" + str(uid)
 
-        if not weights:
+        if weights is None:
             self.weights = []
             for n in range(1, len(self.topology)):
                 self.weights.append(np.random.randn(self.topology[n], self.topology[n - 1]))
-        if not biases:
+        if biases is None:
             self.biases = []
             for n in range(1, len(self.topology)):
                 self.biases.append(np.random.randn(self.topology[n], 1))
-        if not activation_types:
+        if activation_types is None:
             self.activation_types = []
             for n in range(1, len(self.topology) - 1):
                 self.activation_types.append(random.choice(self.allowed_activation_types))
             self.activation_types.append(sigmoid)
 
     # terrible practice and terrible solution, but we ball
-    async def generate_name(self):
+    def generate_name(self):
         # probably a more elegant way to do this but wc
         topology_str_flattened = ""
         for k in self.topology:
             topology_str_flattened += str(k)
         return self._lineage + "_" + topology_str_flattened
 
-    async def debug_structure(self):
+    def debug_structure(self):
         print()
         print(self.topology)
         print(self.activation_types)
@@ -51,7 +51,7 @@ class GeneralizedFeedforwardModel:
             print(k.shape)
         print()
 
-    async def insert_hidden_layer(self, idx, neurons):
+    def insert_hidden_layer(self, idx, neurons):
         # Assumes operation not performed with first or last index
         self.topology.insert(idx, neurons)
         self.weights.insert(idx, np.ones((self.topology[idx + 1], neurons)))
@@ -59,7 +59,7 @@ class GeneralizedFeedforwardModel:
         self.activation_types.insert(idx, relu)
 
     # brocken will fix later
-    async def add_node(self, layer):
+    def add_node(self, layer):
         # Assumes operation not performed on first or last layers
         self.topology[layer] += 1
 
@@ -73,64 +73,64 @@ class GeneralizedFeedforwardModel:
         new_weights_following = np.random.randn(self.topology[layer + 1], 1)
         self.weights[idx + 1] = np.hstack((self.weights[idx + 1], new_weights_following))
 
-    async def feed_forward(self, A0):
+    def feed_forward(self, A0):
         inp = A0.T
 
         for i in range(len(self.weights)):
             out_raw = self.weights[i] @ inp + self.biases[i]
             activation = self.activation_types[i]
-            out_final = await activation(out_raw)
+            out_final = activation(out_raw)
             inp = out_final
 
         return out_final
 
-    async def mutate_activation_functions(self, prob):
+    def mutate_activation_functions(self, prob):
         for i in range(0, len(self.topology) - 1):
             if random.random() < prob:
                 self.topology[i] = random.choice(self.allowed_activation_types)
 
-    async def mutate_node_insertion(self, prob):
+    def mutate_node_insertion(self, prob):
         if random.random() < prob:
-            await self.add_node(random.randint(1, len(self.topology) - 2))
+            self.add_node(random.randint(1, len(self.topology) - 2))
 
-    async def mutate_layer_insertion(self, prob):
+    def mutate_layer_insertion(self, prob):
         if random.random() < prob:
             idx = random.randint(1, len(self.topology) - 2)
-            await self.insert_hidden_layer(idx, self.topology[idx])
+            self.insert_hidden_layer(idx, self.topology[idx])
 
-    async def mutate_nodes(self, prob, mode="replace"):
+    def mutate_nodes(self, prob, mode="replace"):
         for i in range(len(self.weights)):
             if mode == "nudge":
-                self.weights[i], self.biases[i] = await nudge_random_node_parameters(self.weights[i], self.biases[i], prob)
+                self.weights[i], self.biases[i] = nudge_random_node_parameters(self.weights[i], self.biases[i], prob)
             elif mode == "replace":
-                self.weights[i], self.biases[i] = await replace_random_node_parameters(self.weights[i], self.biases[i], prob)
+                self.weights[i], self.biases[i] = replace_random_node_parameters(self.weights[i], self.biases[i], prob)
             else:
                 print("No mutation performed; invalid mutation type")
 
-    async def nudge_random_parameters(self, prob):
+    def nudge_random_parameters(self, prob):
         pass
 
-    async def replace_random_parameters(self, prob):
+    def replace_random_parameters(self, prob):
         pass
 
     # TODO further reading https://link.springer.com/article/10.1007/s10710-024-09481-7
     # TODO neat https://macwha.medium.com/evolving-ais-using-a-neat-algorithm-2d154c623828
 
-    async def check_topology_match(self, other):
+    def check_topology_match(self, other):
         if self.topology == other.topology:
             return True
         return False
 
-    async def dirty_speciated_blockswap_crossover(self, other):
+    def dirty_speciated_blockswap_crossover(self, other):
         pass
 
-    async def dirty_speciated_average_crossover(self, other):
+    def dirty_speciated_average_crossover(self, other):
         pass
 
-    async def dirty_blockswap_crossover(self, other):
+    def dirty_blockswap_crossover(self, other):
         pass
 
-    async def dirty_average_crossover(self, other):
+    def dirty_average_crossover(self, other):
         pass
 
     # aliasing
@@ -140,19 +140,19 @@ class GeneralizedFeedforwardModel:
     dirty_blockswap = dirty_blockswap_crossover
     dirty_avg = dirty_average_crossover
 
-async def sigmoid(matrix):
+def sigmoid(matrix):
     return 1 / (1 + np.exp(-1 * matrix))
 
-async def tanh(matrix):
+def tanh(matrix):
     return np.tanh(matrix)
 
-async def relu(matrix):
+def relu(matrix):
     return np.maximum(0, matrix)
 
-async def leaky_relu(matrix, alpha=0.01):
+def leaky_relu(matrix, alpha=0.01):
     return np.where(matrix > 0, matrix, matrix * alpha)
 
-async def nudge_random_node_parameters(weights, biases, chance):
+def nudge_random_node_parameters(weights, biases, chance):
     for index, node in enumerate(weights):
         if (random.random() < chance):
             for weight in node:
@@ -160,7 +160,7 @@ async def nudge_random_node_parameters(weights, biases, chance):
             biases[index] += random.uniform(-1, 1)
     return weights, biases
 
-async def replace_random_node_parameters(weights, biases, chance):
+def replace_random_node_parameters(weights, biases, chance):
     for index, node in enumerate(weights):
         if (random.random() < chance):
             for w in node:
@@ -168,17 +168,19 @@ async def replace_random_node_parameters(weights, biases, chance):
             biases[index] = np.random.randn()
     return weights, biases
 
-async def clone(base, uid=1):
+def clone(base, uid=1):
     return GeneralizedFeedforwardModel(base.topology, base.weights, base.biases, base.activation_types, base.generate_name(), uid)
 
-async def save(target, path):
-    with open(path, "w+") as f:
-        np.savez(f, topology=np.array(target.topology), weights=np.array(target.weights), biases=np.array(target.biases), activation_types=np.array(export_activation(target.activation_types)))
+def save(target, path):
+    with open(path, "wb") as f:
+        np.savez(f, topology=np.array(target.topology, dtype=object), weights=np.array(target.weights, dtype=object), biases=np.array(target.biases, dtype=object), activation_types=export_activation(target.activation_types))
 
-async def load(path):
-    with open(path) as f:
-        file = np.load(f)
+def load(path):
+    with open(path, "rb") as f:
+        file = np.load(f, allow_pickle=True)
         return GeneralizedFeedforwardModel(file['topology'], file['weights'], file['biases'], import_activation(file['activation_types']))
+
+# extremely hacky solution for no reason
 
 mref = {
     "sigmoid": sigmoid,
@@ -186,26 +188,31 @@ mref = {
     "relu": relu,
     "leaky_relu": leaky_relu
 }
-async def export_activation(arr):
+
+def export_activation(arr):
     res = []
     for i in arr:
-        res.append([k for k,v in mref.items() if v == i])
+        res.append([k for k,v in mref.items() if v == i][0])
     return res
 
-async def import_activation(arr):
+def import_activation(arr):
     res = []
     for i in arr:
         res.append(mref[i])
     return res
-async def test():
+
+def test():
     model = GeneralizedFeedforwardModel()
     inp = [[0.3, 0.5, 0.1, 0.9, 0.6]]
     inp = numpy.array(inp)
-    await model.debug_structure()
-    print(await model.feed_forward(inp))
-    await model.mutate_layer_insertion(1)
-    await model.mutate_node_insertion(1)
-    await model.debug_structure()
-    print(await model.feed_forward(inp))
+    model.debug_structure()
+    print(model.feed_forward(inp))
+    model.mutate_layer_insertion(1)
+    model.mutate_node_insertion(1)
+    model.debug_structure()
+    print(model.feed_forward(inp))
+    save(model, "modelsavetest_0.npz")
+    model2 = load("modelsavetest_0.npz")
+    print(model2.feed_forward(inp))
 
-asyncio.run(test())
+test()
