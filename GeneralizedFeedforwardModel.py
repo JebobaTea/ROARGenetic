@@ -168,6 +168,35 @@ async def replace_random_node_parameters(weights, biases, chance):
             biases[index] = np.random.randn()
     return weights, biases
 
+async def clone(base, uid=1):
+    return GeneralizedFeedforwardModel(base.topology, base.weights, base.biases, base.activation_types, base.generate_name(), uid)
+
+async def save(target, path):
+    with open(path, "w+") as f:
+        np.savez(f, topology=np.array(target.topology), weights=np.array(target.weights), biases=np.array(target.biases), activation_types=np.array(export_activation(target.activation_types)))
+
+async def load(path):
+    with open(path) as f:
+        file = np.load(f)
+        return GeneralizedFeedforwardModel(file['topology'], file['weights'], file['biases'], import_activation(file['activation_types']))
+
+mref = {
+    "sigmoid": sigmoid,
+    "tanh": tanh,
+    "relu": relu,
+    "leaky_relu": leaky_relu
+}
+async def export_activation(arr):
+    res = []
+    for i in arr:
+        res.append([k for k,v in mref.items() if v == i])
+    return res
+
+async def import_activation(arr):
+    res = []
+    for i in arr:
+        res.append(mref[i])
+    return res
 async def test():
     model = GeneralizedFeedforwardModel()
     inp = [[0.3, 0.5, 0.1, 0.9, 0.6]]
