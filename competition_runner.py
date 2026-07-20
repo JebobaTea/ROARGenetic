@@ -280,7 +280,11 @@ async def main():
                 else:
                     m = GeneralizedFeedforwardModel(uid=ct)
             else:
-                m = GeneralizedFeedforwardModel(uid=ct)
+                m = clone(load("template0.npz"), uid=ct)
+                m.mutate_layer_insertion(0.1)
+                m.mutate_node_insertion(0.1)
+                m.mutate_nodes(0.1)
+                m.mutate_activation_functions(0.1)
 
             result = await evaluate_solution(
                 world,
@@ -298,7 +302,7 @@ async def main():
 
         nsm = dict(heapq.nsmallest(5, fitness.items(), key=lambda item: item[1]))
         print("generation best: ")
-        for k, v in nsm:
+        for k, v in nsm.items():
             best.append(models[k])
             save(models[k], f"best/A/{k}.npz")
             print(f"{models[k].generate_name()} | {meta[k][0]} | {meta[k][1]}")
