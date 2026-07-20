@@ -186,7 +186,8 @@ class RoarCompetitionSolution:
         self.coeff = model_output.item(1)*10
         brake = abs(model_output.item(2))
 
-        if (vehicle_speed < 10):
+        if (vehicle_speed < 10 and brake < throttle):
+            # help accelerate from a dead stop, but only allow vehicle to live if aggressive enough
             brake = 0
 
         # Logging for debugging
