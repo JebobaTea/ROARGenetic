@@ -180,8 +180,6 @@ def load(path):
         file = np.load(f, allow_pickle=True)
         return GeneralizedFeedforwardModel(file['topology'], file['weights'], file['biases'], import_activation(file['activation_types']))
 
-# extremely hacky solution for no reason
-
 mref = {
     "sigmoid": sigmoid,
     "tanh": tanh,
