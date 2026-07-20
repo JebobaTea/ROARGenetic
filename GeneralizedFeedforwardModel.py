@@ -178,7 +178,7 @@ def save(target, path):
 def load(path):
     with open(path, "rb") as f:
         file = np.load(f, allow_pickle=True)
-        return GeneralizedFeedforwardModel(file['topology'], file['weights'], file['biases'], import_activation(file['activation_types']))
+        return GeneralizedFeedforwardModel(file['topology'].tolist(), file['weights'].tolist(), file['biases'].tolist(), import_activation(file['activation_types']))
 
 mref = {
     "sigmoid": sigmoid,
