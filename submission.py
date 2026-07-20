@@ -151,6 +151,9 @@ class RoarCompetitionSolution:
         vehicle_velocity = self.velocity_sensor.get_last_gym_observation()
         vehicle_speed = np.linalg.norm(vehicle_velocity) * 3.6
 
+        if self.coeff < 0.01: # dividebyzero behavior
+            self.coeff = 0.01
+
         # Get nearest waypoint and determine target waypoints
         self.current_waypoint_idx = filter_waypoints(
             vehicle_location, self.current_waypoint_idx, self.maneuverable_waypoints
@@ -183,10 +186,10 @@ class RoarCompetitionSolution:
 
         # Dynamic throttle and brake control
         throttle = abs(model_output.item(0))
-        self.coeff = model_output.item(1)*10
+        self.coeff = abs(model_output.item(1)*10)
         brake = abs(model_output.item(2))
 
-        if (vehicle_speed < 10 and brake < throttle):
+        if (vehicle_speed < 10 and brake < throttle and brake < 0.4):
             # help accelerate from a dead stop, but only allow vehicle to live if aggressive enough
             brake = 0
 
