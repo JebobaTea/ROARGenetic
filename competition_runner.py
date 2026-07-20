@@ -258,14 +258,16 @@ async def main():
 
     gens = 10
     ct = 0
+    best = []
     for gen in range(gens):
         models = {}
         fitness = {}
         fitness_by_spp = {}
         meta = {}
-        best = []
-        pop = 150
-        for indv in range(pop):
+        pop = 100
+        indv = 0
+        viable = 0
+        while viable < pop:
             ct += 1
             if gen != 0:
                 if any(best):
@@ -278,11 +280,8 @@ async def main():
                     m = GeneralizedFeedforwardModel(uid=ct)
             else:
                 # import here / first gen
-                m = clone(load("template5.npz"), uid=ct)
-
-                # print(m.topology)
-                # quick fix for damaged templates
-                m.topology[0] = 5
+                templates = ["template10.npz", "template11.npz", "template12.npz", "template13.npz"]
+                m = clone(load(random.choice(templates)), uid=ct)
 
                 m.mutate_layer_insertion(0.1)
                 m.mutate_node_insertion(0.1)
@@ -297,12 +296,15 @@ async def main():
                 max_seconds=500,
                 enable_visualization=False,
                 model=m
-            ) # need to add species protection
+            )
             print(f"gen {gen} member {indv} got to {result['distance']} in {result['elapsed_time']}s")
             print(m.topology)
             print(m.activation_types)
             print()
             if result['elapsed_time'] < 500:
+                if result["distance"] > 500:
+                    # don't continue into next generation without collecting enough workable individuals
+                    viable += 1
                 fit_score = (math.pow((2776 - result["distance"]) / 2775, 3) * (result["elapsed_time"] ** 2))
                 fitness[m.uid] = fit_score
                 if m.get_species() not in fitness_by_spp:
@@ -310,17 +312,22 @@ async def main():
                 fitness_by_spp[m.get_species()][m.uid] = fit_score
                 models[m.uid] = m
                 meta[m.uid] = [round(result['elapsed_time'], 3), round(result['distance'], 3)]
-                save(m, f"backups/E/{gen}_{indv}_{m.uid}_{m.get_species()}_{round(result['elapsed_time'], 3)}_{round(result['distance'], 3)}.npz")
+                save(m, f"backups/F/{gen}_{indv}_{m.uid}_{m.get_species()}_{round(result['elapsed_time'], 3)}_{round(result['distance'], 3)}.npz")
+            indv += 1
 
-        keep = dict(heapq.nsmallest(5, fitness.items(), key=lambda item: item[1]))
+        keep = dict(heapq.nsmallest(3, fitness.items(), key=lambda item: item[1]))
         # allow new species to be preserved
         for k, v in fitness_by_spp.items():
             this_spp_best_uid = min(v, key=v.get)
             keep[this_spp_best_uid] = v[this_spp_best_uid]
+
+        # keep strongest of the new species
+        keep = dict(heapq.nsmallest(5, keep.items(), key=lambda item: item[1]))
+        best = []
         print("generation best: ")
         for k, v in keep.items():
             best.append(models[k])
-            save(models[k], f"best/E/{k}_{meta[k][0]}_{meta[k][1]}.npz")
+            save(models[k], f"best/F/{k}_{meta[k][0]}_{meta[k][1]}_{models[k].topology}.npz")
             print(f"{models[k].generate_name()} | {meta[k][0]} | {meta[k][1]} | {models[k].topology} | {models[k].activation_types}")
 
 if __name__ == "__main__":
