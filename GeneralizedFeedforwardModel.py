@@ -39,6 +39,12 @@ class GeneralizedFeedforwardModel:
             topology_str_flattened += str(k)
         return self._lineage + "_" + topology_str_flattened
 
+    def get_species(self):
+        spp = ""
+        for l in self.topology:
+            spp += str(l)
+        return spp
+
     def debug_structure(self):
         print()
         print(self.topology)
@@ -87,7 +93,7 @@ class GeneralizedFeedforwardModel:
     def mutate_activation_functions(self, prob):
         for i in range(0, len(self.topology) - 1):
             if random.random() < prob:
-                self.topology[i] = random.choice(self.allowed_activation_types)
+                self.activation_types[i] = random.choice(self.allowed_activation_types)
 
     def mutate_node_insertion(self, prob):
         if random.random() < prob:
