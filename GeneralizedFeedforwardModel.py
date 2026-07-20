@@ -212,5 +212,3 @@ def test():
     save(model, "modelsavetest_0.npz")
     model2 = load("modelsavetest_0.npz")
     print(model2.feed_forward(inp))
-
-test()
