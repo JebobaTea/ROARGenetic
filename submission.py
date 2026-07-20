@@ -1,11 +1,16 @@
+"""
+Competition instructions:
+Please do not change anything else but fill out the to-do sections.
+"""
 import math
+
 import roar_py_interface
 import numpy as np
 import os
 import random
 from collections import deque
 from typing import List, Tuple, Dict, Optional
-from DumbMutationModel import DumbMutationModel
+from GeneralizedFeedforwardModel import GeneralizedFeedforwardModel
 
 
 def normalize_rad(rad : float):
@@ -32,7 +37,7 @@ class RoarCompetitionSolution:
         rpy_sensor : roar_py_interface.RoarPyRollPitchYawSensor = None,
         occupancy_map_sensor : roar_py_interface.RoarPyOccupancyMapSensor = None,
         collision_sensor : roar_py_interface.RoarPyCollisionSensor = None,
-        model: DumbMutationModel = None,
+        model: GeneralizedFeedforwardModel = None,
     ) -> None:
         self.maneuverable_waypoints = maneuverable_waypoints
         self.vehicle = vehicle
@@ -45,9 +50,8 @@ class RoarCompetitionSolution:
         self.lat_pid_controller = LatPIDController(config=self.get_lateral_pid_config())
         self.model = model
         self.coeff = 1
-        
-    # Modify PID equation coefficients depending on speed
-    # Refer to chart on the slides for the effects of raising/lowering each individual parameter
+        self.steps = 0
+
     def get_lateral_pid_config(self):
         conf = {
             "60": {
@@ -125,7 +129,8 @@ class RoarCompetitionSolution:
         vehicle_velocity = self.velocity_sensor.get_last_gym_observation()
         self.maneuverable_waypoints = (
             roar_py_interface.RoarPyWaypoint.load_waypoint_list(
-                np.load(f"{os.path.dirname(__file__)}\\test.npz")
+                # waypoints9 best
+                np.load(f"{os.path.dirname(__file__)}\\waypointsPrimary.npz") # Lifted from DerekChen1
             )
         )
 
@@ -136,25 +141,20 @@ class RoarCompetitionSolution:
             self.maneuverable_waypoints
         )
 
-    # Called continuously during simulation (basically like a gameloop)
+
     async def step(
         self
     ) -> None:
-        # Receive location, rotation and velocity data
+        # Obtain vehicle data
         vehicle_location = self.location_sensor.get_last_gym_observation()
         vehicle_rotation = self.rpy_sensor.get_last_gym_observation()
         vehicle_velocity = self.velocity_sensor.get_last_gym_observation()
         vehicle_speed = np.linalg.norm(vehicle_velocity) * 3.6
 
-         # Find the waypoint closest to the vehicle
+        # Get nearest waypoint and determine target waypoints
         self.current_waypoint_idx = filter_waypoints(
             vehicle_location, self.current_waypoint_idx, self.maneuverable_waypoints
         )
-        # Steering control is always determined by the waypoint 3 ahead of the current waypoint
-        # In a PID implementation, we determine when we slow down in anticipation of a turn, we select a waypoint ___ indices ahead of the current waypoint depending on the speed
-        # The lookahead variable refers to the waypoint in question
-        # To get a reference to a waypoint 20 waypoints ahead of the current waypoint, for example, use 
-        #   waypoint_20_ahead = self.lat_pid_controller.get_waypoint_at_offset(self.maneuverable_waypoints, self.current_waypoint_idx, 20)
         waypoint_to_follow = self.lat_pid_controller.get_waypoint_at_offset(self.maneuverable_waypoints,
                                                                             self.current_waypoint_idx, 3)
         far_waypoint = self.lat_pid_controller.get_waypoint_at_offset(self.maneuverable_waypoints,
@@ -164,7 +164,7 @@ class RoarCompetitionSolution:
         lookahead = self.lat_pid_controller.get_waypoint_at_offset(self.maneuverable_waypoints,
                                                                    self.current_waypoint_idx, int(vehicle_speed / self.coeff))
 
-        # Here, in this example model, we actually calculate multiple error values for multiple offsets to give our model more data to work with
+        # Steering control
         steer_control = self.lat_pid_controller.run_in_series(
             vehicle_location, vehicle_rotation, vehicle_speed, waypoint_to_follow
         )
@@ -179,17 +179,22 @@ class RoarCompetitionSolution:
         model_input = np.array([
             [near_error, far_error, dynamic_error, vehicle_speed/300, steer_control]
         ])
-        model_output = await self.model.feed_forward(model_input)
+        model_output = self.model.feed_forward(model_input)
 
-        # Apply outputs from feedforward results
+        # Dynamic throttle and brake control
         throttle = abs(model_output.item(0))
         self.coeff = model_output.item(1)*10
         brake = abs(model_output.item(2))
 
-        # Override brake outputs of the model if speed is low, otherwise it will fail to accelerate from a dead stop
-        if (vehicle_speed < 60):
+        if (vehicle_speed < 10):
             brake = 0
-        
+
+        # Logging for debugging
+        #os.system("cls")
+        self.steps += 1
+        if self.steps % 500 == 0 or self.steps == 100:
+            print(f"Brake: {brake:.2f}, Throttle: {throttle:.2f}, Speed: {vehicle_speed:.2f}, Distance: {self.current_waypoint_idx}")
+        # Apply vehicle controls
         control = {
             "throttle": np.clip(throttle, 0.0, 1.0),
             "steer": np.clip(steer_control, -1.0, 1.0),
