@@ -7,7 +7,9 @@ import asyncio
 
 class GeneralizedFeedforwardModel:
     # Initialize with random values. Last layer always uses sigmoid; expected output for our use case is clipped between 0,1 anyways
-    def __init__(self, topology=[5, 8, 8, 3], weights=None, biases=None, activation_types=None, parent_string="ARC", uid=0):
+    def __init__(self, topology=None, weights=None, biases=None, activation_types=None, parent_string="ARC", uid=0):
+        if topology is None:
+            topology = [5, 8, 8, 3]
         self.weights = weights
         self.biases = biases
         self.topology = topology
