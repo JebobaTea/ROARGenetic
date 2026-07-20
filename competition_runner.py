@@ -255,19 +255,16 @@ async def main():
     world = roar_py_instance.world
     world.set_control_steps(0.05, 0.005)
     world.set_asynchronous(False)
-    # initialize blank model as new best, will be overwritten if needed
-    #best = GeneralizedFeedforwardModel()
 
     gens = 10
     ct = 0
     for gen in range(gens):
         models = {}
         fitness = {}
+        fitness_by_spp = {}
         meta = {}
         best = []
         pop = 150
-        if gen < 2:
-            pop = 50
         for indv in range(pop):
             ct += 1
             if gen != 0:
@@ -280,32 +277,51 @@ async def main():
                 else:
                     m = GeneralizedFeedforwardModel(uid=ct)
             else:
-                m = clone(load("template0.npz"), uid=ct)
+                # import here / first gen
+                m = clone(load("template5.npz"), uid=ct)
+
+                # print(m.topology)
+                # quick fix for damaged templates
+                m.topology[0] = 5
+
                 m.mutate_layer_insertion(0.1)
                 m.mutate_node_insertion(0.1)
                 m.mutate_nodes(0.1)
                 m.mutate_activation_functions(0.1)
+                print(m.topology)
+                print(m.activation_types)
 
             result = await evaluate_solution(
                 world,
                 RoarCompetitionSolution,
-                max_seconds=600,
+                max_seconds=500,
                 enable_visualization=False,
                 model=m
-            )
+            ) # need to add species protection
             print(f"gen {gen} member {indv} got to {result['distance']} in {result['elapsed_time']}s")
+            print(m.topology)
+            print(m.activation_types)
+            print()
             if result['elapsed_time'] < 500:
-                fitness[m.uid] = (math.pow((2776 - result["distance"]) / 2775, 3) * (result["elapsed_time"] ** 2))
+                fit_score = (math.pow((2776 - result["distance"]) / 2775, 3) * (result["elapsed_time"] ** 2))
+                fitness[m.uid] = fit_score
+                if m.get_species() not in fitness_by_spp:
+                    fitness_by_spp[m.get_species()] = {}
+                fitness_by_spp[m.get_species()][m.uid] = fit_score
                 models[m.uid] = m
                 meta[m.uid] = [round(result['elapsed_time'], 3), round(result['distance'], 3)]
-                save(m, f"backups/A/gen_{gen}_no_{indv}_t_{round(result['elapsed_time'], 3)}s_d_{round(result['distance'], 3)}.npz")
+                save(m, f"backups/E/{gen}_{indv}_{m.uid}_{m.get_species()}_{round(result['elapsed_time'], 3)}_{round(result['distance'], 3)}.npz")
 
-        nsm = dict(heapq.nsmallest(5, fitness.items(), key=lambda item: item[1]))
+        keep = dict(heapq.nsmallest(5, fitness.items(), key=lambda item: item[1]))
+        # allow new species to be preserved
+        for k, v in fitness_by_spp.items():
+            this_spp_best_uid = min(v, key=v.get)
+            keep[this_spp_best_uid] = v[this_spp_best_uid]
         print("generation best: ")
-        for k, v in nsm.items():
+        for k, v in keep.items():
             best.append(models[k])
-            save(models[k], f"best/A/{k}.npz")
-            print(f"{models[k].generate_name()} | {meta[k][0]} | {meta[k][1]}")
+            save(models[k], f"best/E/{k}_{meta[k][0]}_{meta[k][1]}.npz")
+            print(f"{models[k].generate_name()} | {meta[k][0]} | {meta[k][1]} | {models[k].topology} | {models[k].activation_types}")
 
 if __name__ == "__main__":
     asyncio.run(main())
