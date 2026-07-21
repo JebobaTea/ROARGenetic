@@ -1,7 +1,7 @@
 import numpy
 import numpy as np
 import random
-import asyncio
+import copy
 
 # TODO: overseer, evaluate current waypoint idx and current time (if possible) to prevent collisions and kill the slower vehicle; kill on collision, stoppage, stuck vehicles
 
@@ -177,7 +177,7 @@ def replace_random_node_parameters(weights, biases, chance):
     return weights, biases
 
 def clone(base, uid=1):
-    return GeneralizedFeedforwardModel(base.topology, base.weights, base.biases, base.activation_types, base.generate_name(), uid)
+    return GeneralizedFeedforwardModel(copy.deepcopy(base.topology), copy.deepcopy(base.weights), copy.deepcopy(base.biases), copy.deepcopy(base.activation_types), base.generate_name(), uid)
 
 def save(target, path):
     with open(path, "wb") as f:
